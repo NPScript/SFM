@@ -42,6 +42,6 @@ std::map<std::string, char> NAV_KEYS = {
 std::map<char, std::string> SHORT_CUTS = {
 	{'m', "mkdir "},
 	{'d', "rm "},
-	{' ', "less \?\n"}
+	{' ', "less -N +k \?\n"}
 };
 

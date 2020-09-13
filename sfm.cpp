@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <string>
 #include <sstream>
+#include <fstream>
 
 #include "config.hpp"
 
@@ -18,6 +19,7 @@ class Sfm {
 	private:
 		WINDOW * windows[3];
 		WINDOW * shell_panel;
+		WINDOW * file_view;
 		std::vector<std::string> files[3];
 		int screen_size[2];
 		boost::filesystem::path current_path;
@@ -55,6 +57,7 @@ Sfm::Sfm() : current_path(boost::filesystem::current_path()), show_hidden(false)
 	}
 
 	shell_panel = newwin(1, screen_size[1], screen_size[0], 0);
+	file_view = newwin(1, 1, 0, 0);
 
 	this->refresh_files();
 	this->refresh_display();
@@ -68,6 +71,7 @@ Sfm::~Sfm() {
 	}
 
 	delwin(shell_panel);
+	delwin(file_view);
 
 	clear();
 	refresh();
@@ -128,15 +132,6 @@ void Sfm::refresh_display() {
 	clear();
 	refresh();
 
-	mvwin(shell_panel, screen_size[0], 0);
-	wclear(shell_panel);
-	if (current_path.string().size() < screen_size[1]) {
-		mvwprintw(shell_panel, 0, 0, current_path.c_str());
-	} else {
-		mvwprintw(shell_panel, 0, 0, ("…" + current_path.string().substr(current_path.string().size() - screen_size[1] + 1, std::string::npos)).c_str());
-	}
-	wrefresh(shell_panel);
-
 	for (int i = 0; i < 3; ++i) {
 		wresize(windows[i], screen_size[0], screen_size[1] / 3);
 		mvwin(windows[i], 0, screen_size[1] / 3 * i);
@@ -163,7 +158,7 @@ void Sfm::refresh_display() {
 
 				mvwprintw(windows[i], j + 1, 1, str.c_str());
 			} else {
-				mvwprintw(windows[i], j + 1, 1, files[i][j].c_str());
+				mvwprintw(windows[i], j + 1, 1, (files[i][j] + std::string(screen_size[1] / 3 - 2 - files[i][j].size(), ' ')).c_str());
 			}
 
 			if (is_active) {
@@ -176,6 +171,40 @@ void Sfm::refresh_display() {
 		wcolor_set(windows[i], 0, 0);
 		wrefresh(windows[i]);
 	}
+
+	if (!boost::filesystem::is_directory(current_path.string() + "/" + files[1][selection])) {
+		wcolor_set(windows[2], 1, 0);
+		mvwhline(windows[2], files[2].size() + 1, 1, ACS_HLINE, screen_size[1] / 3 - 2);
+		wcolor_set(windows[2], 0, 0);
+
+		wclear(file_view);
+
+		mvwin(file_view, files[2].size() + 2, screen_size[1] / 3 * 2 + 1);
+		wresize(file_view, screen_size[0] - 3 - files[2].size(), screen_size[1] / 3 - 2);
+
+		std::ifstream f(current_path.string() + "/" + files[1][selection]);
+		std::string line;
+		std::string view;
+
+		for (int i = 0; i < 50 && getline(f, line); ++i) {
+			view += line + "\n";
+		}
+
+		mvwprintw(file_view, 0, 0, view.c_str());
+
+		wrefresh(file_view);
+		wrefresh(windows[2]);
+	}
+
+	mvwin(shell_panel, screen_size[0], 0);
+	wclear(shell_panel);
+	if (current_path.string().size() < screen_size[1]) {
+		mvwprintw(shell_panel, 0, 0, current_path.c_str());
+	} else {
+		mvwprintw(shell_panel, 0, 0, ("…" + current_path.string().substr(current_path.string().size() - screen_size[1] + 1, std::string::npos)).c_str());
+	}
+	wrefresh(shell_panel);
+
 }
 
 void Sfm::refresh_files() {
@@ -206,11 +235,13 @@ void Sfm::refresh_files() {
 		this->files[2].push_back("Name:");
 		this->files[2].push_back(active.filename().string().substr(0, active.filename().string().find_first_of(".")));
 		this->files[2].push_back("");
+		this->files[2].push_back("Type:");
 		if (active.has_extension()) {
-			this->files[2].push_back("Type:");
 			this->files[2].push_back(boost::algorithm::to_upper_copy(active.extension().string().substr(1, std::string::npos)));
-			this->files[2].push_back("");
+		} else {
+			this->files[2].push_back("Unknown");
 		}
+		this->files[2].push_back("");
 		this->files[2].push_back("Size:");
 		boost::uintmax_t size = boost::filesystem::file_size(active);
 		this->files[2].push_back(this->get_human_readable_size(size));
