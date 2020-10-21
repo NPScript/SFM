@@ -1,5 +1,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/directory.hpp>
+#include <boost/filesystem/exception.hpp>
 #include <boost/filesystem/file_status.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/algorithm/string.hpp>
@@ -13,32 +14,48 @@
 #include <sstream>
 #include <fstream>
 
+void start_session();
+void end_session();
+
+void quit();
+void open();
+void toggle_hidden();
+void move();
+void refresh_display();
+void refresh_files();
+void mainloop();
+void insert_files(const int &, const std::string &);
+void run_command();
+
+struct arg {
+	int v;
+	int h;
+	std::string cmd;
+} cmd_arg;
+
 #include "config.hpp"
 
-class Sfm {
-	private:
-		WINDOW * windows[3];
-		WINDOW * shell_panel;
-		WINDOW * file_view;
-		std::vector<std::string> files[3];
-		int screen_size[2];
-		boost::filesystem::path current_path;
-		int selection;
-		bool show_hidden;
-		bool shell_command;
-		bool can_enter;
-	public:
-		Sfm();
-		~Sfm();
 
-		void refresh_display();
-		void refresh_files();
-		void mainloop();
-		void insert_files(const int &, const std::string &);
-		void run_command(const std::string & = "");
-};
+WINDOW * windows[3];
+WINDOW * shell_panel;
+WINDOW * file_view;
+std::vector<std::string> files[3];
+boost::filesystem::path current_path;
+int screen_size[2];
+int selection;
+bool show_hidden;
+bool shell_command;
+bool can_enter;
+bool running;
 
-Sfm::Sfm() : current_path(boost::filesystem::current_path()), show_hidden(false), shell_command(false), selection(0) {
+
+void start_session() {
+	current_path = boost::filesystem::current_path();
+	show_hidden = false;
+	shell_command = false;
+	selection = 0;
+	running = true;
+
 	setlocale(LC_ALL, "");
 	initscr();
 	start_color();
@@ -59,11 +76,11 @@ Sfm::Sfm() : current_path(boost::filesystem::current_path()), show_hidden(false)
 	shell_panel = newwin(1, screen_size[1], screen_size[0], 0);
 	file_view = newwin(1, 1, 0, 0);
 
-	this->refresh_files();
-	this->refresh_display();
+	refresh_files();
+	refresh_display();
 }
 
-Sfm::~Sfm() {
+void end_session() {
 	echo();
 	curs_set(1);
 	for (int i = 0; i < 3; ++i) {
@@ -78,53 +95,73 @@ Sfm::~Sfm() {
 	endwin();
 }
 
-void Sfm::mainloop() {
-	char ch;
+void move() {
+		if (cmd_arg.v < 0) {
+			for (; cmd_arg.v < 0 && current_path != boost::filesystem::path("/"); ++cmd_arg.v) {
+				selection = std::distance(files[0].begin(), std::find(files[0].begin(), files[0].end(), current_path.filename().string()));
+				current_path = current_path.parent_path();
+			}
 
-	while ((ch = getch()) != NAV_KEYS["quit"]) {
-		if (ch == NAV_KEYS["left"] && current_path != boost::filesystem::path("/")) {
-			selection = std::distance(this->files[0].begin(), std::find(this->files[0].begin(), this->files[0].end(), this->current_path.filename().string()));
-			this->current_path = this->current_path.parent_path();
-		} else if (ch == NAV_KEYS["right"]) {
-			std::string next_path = (this->current_path.string() == "/" ? "" : this->current_path.string()) + "/" + this->files[1][selection];
-			if (this->can_enter) {
-				this->current_path = next_path;
-				selection = 0;
-			}
-		} else if (ch == NAV_KEYS["down"]) {
-			if (selection < files[1].size() - 1)
-				++selection;
-		}
-		else if (ch == NAV_KEYS["up"]) {
-			if (selection > 0)
-				--selection;
-		} else if (ch == NAV_KEYS["toggle_hidden"]) {
-			show_hidden = !show_hidden;
-		} else if (ch == NAV_KEYS["open"] || ch == '\n') {
-			std::string next_path = (this->current_path.string() == "/" ? "" : this->current_path.string()) + "/" + this->files[1][selection];
-			if (boost::filesystem::is_directory(next_path)) {
-				this->current_path = next_path;
-				selection = 0;
-			} else {
-				system((std::string("xdg-open ") + next_path).c_str());
-			}
-		} else if (ch == NAV_KEYS["execute"]) {
-			run_command();
-		} else {
-			for (std::pair<const char, std::string> & i : SHORT_CUTS) {
-				if (ch == i.first) {
-					run_command(i.second);
-					break;
+		} else if (cmd_arg.v > 0) {
+			
+			for (; cmd_arg.v > 0 && can_enter; --cmd_arg.v) {
+				std::string next_path = (current_path.string() == "/" ? "" : current_path.string()) + "/" + files[1][selection];
+				if (can_enter) {
+					current_path = next_path;
+					selection = 0;
 				}
+
+				refresh_files();
 			}
 		}
 
-		this->refresh_files();
-		this->refresh_display();
+		selection += cmd_arg.h;
+
+		if (selection < 0)
+			selection = 0;
+		else if (selection > files[1].size() - 1)
+			selection = files[1].size() - 1;
+}
+
+void toggle_hidden() {
+	show_hidden = !show_hidden;
+}
+
+void open() {
+	std::string next_path = (current_path.string() == "/" ? "" : current_path.string()) + "/" + files[1][selection];
+	if (boost::filesystem::is_directory(next_path)) {
+		current_path = next_path;
+		selection = 0;
+	} else {
+		system((std::string("xdg-open ") + next_path).c_str());
 	}
 }
 
-void Sfm::refresh_display() {
+void quit() {
+	running = false;
+}
+
+void mainloop() {
+	char ch;
+
+	while (running) {
+		ch = getch();
+		if (NAV_KEYS.find(ch) != NAV_KEYS.end()) {
+			cmd_arg.cmd = NAV_KEYS.find(ch)->second.second.cmd;
+			cmd_arg.h = NAV_KEYS.find(ch)->second.second.h;
+			cmd_arg.v = NAV_KEYS.find(ch)->second.second.v;
+			(*NAV_KEYS.find(ch)->second.first)();
+		} else if (SHORT_CUTS.find(ch) != SHORT_CUTS.end()) {
+			cmd_arg.cmd = SHORT_CUTS.find(ch)->second;
+			run_command();
+		}
+
+		refresh_files();
+		refresh_display();
+	}
+}
+
+void refresh_display() {
 	getmaxyx(stdscr, screen_size[0], screen_size[1]);
 	--screen_size[0];
 	clear();
@@ -137,7 +174,7 @@ void Sfm::refresh_display() {
 		wclear(windows[i]);
 
 		for (int j = 0; j < files[i].size(); ++j) {
-			bool is_active = this->files[1][selection] == this->files[i][j] && i == 1;
+			bool is_active = files[1][selection] == files[i][j] && i == 1;
 			
 			if (is_active) {
 				wcolor_set(windows[1], 2, 0);
@@ -215,62 +252,57 @@ void Sfm::refresh_display() {
 
 }
 
-void Sfm::refresh_files() {
-	this->files[0].clear();
-	this->files[1].clear();
-	this->files[2].clear();
+void refresh_files() {
+	files[0].clear();
+	files[1].clear();
+	files[2].clear();
 
 	if (current_path != boost::filesystem::path("/")) {
 		insert_files(0, current_path.parent_path().string());
 	} else {
-		this->files[0].push_back("/");
+		files[0].push_back("/");
 	}
 
 	insert_files(1, current_path.string());
 
-	boost::filesystem::path active(current_path.string() + "/" + this->files[1][selection]);
+	boost::filesystem::path active(current_path.string() + "/" + files[1][selection]);
 	
 	if (boost::filesystem::is_directory(active)) {
 		try {
 			insert_files(2, active.string());
-			this->can_enter = true;
-			if (this->files[2].empty()) {
-				this->files[2].push_back("empty");
-				this->can_enter = false;
+			can_enter = true;
+			if (files[2].empty()) {
+				files[2].push_back("empty");
+				can_enter = false;
 			}
 		} catch (boost::filesystem::filesystem_error & e) {
-			this->files[2].push_back(e.code().message());
-			this->can_enter = false;
+			files[2].push_back(e.code().message());
+			can_enter = false;
 		}
 	} else {
-		this->can_enter = false;
+		can_enter = false;
 	}
 }
 
-void Sfm::insert_files(const int & id, const std::string & path) {
+void insert_files(const int & id, const std::string & path) {
 	for (boost::filesystem::directory_entry & i : boost::filesystem::directory_iterator(path)) {
 		if (!(i.path().filename().string()[0] == '.' && !show_hidden)) {
-			this->files[id].push_back(i.path().filename().string());
+			files[id].push_back(i.path().filename().string());
 		}
 	}
 
-	std::sort(this->files[id].begin(), this->files[id].end());
+	std::sort(files[id].begin(), files[id].end());
 }
 
-void Sfm::run_command(const std::string & cmd) {
-	std::string command = cmd;
+void run_command() {
+	std::string command = cmd_arg.cmd;
 	curs_set(1);
 
-	size_t sel = command.find("\?");
-	if (sel != std::string::npos) {
-		command.replace(sel, 1, this->files[1][selection]);
-	}
 
 	wclear(shell_panel);
 	wprintw(shell_panel, (":" + command).c_str());
 	wrefresh(shell_panel);
 	wmove(shell_panel, 0, command.size() + 1);
-
 
 	char ch;
 	if (command.back() == '\n') {
@@ -295,16 +327,23 @@ void Sfm::run_command(const std::string & cmd) {
 	}
 
 	if (ch == '\n') {
+		size_t sel = command.find(selection_shortcut);
+		if (sel != std::string::npos) {
+			command.replace(sel, selection_shortcut.size(), files[1][selection]);
+		}
+
 		command = "(cd " + current_path.string() + " && " + command + ")";
 		system(command.c_str());
 		
 	}
 	curs_set(0);
 	cbreak();
+
 }
 
 int main(int argc, char ** argv) {
-	Sfm sfm;
-	sfm.mainloop();
+	start_session();
+	mainloop();
+	end_session();
 	return 0;
 }

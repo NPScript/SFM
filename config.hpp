@@ -10,6 +10,7 @@
  * COLOR_WHITE   
 */
 
+
 std::vector<std::pair<int, int>> ITEM_COLORS = {
  {7, 0}, 						/* default */
  {COLOR_GREEN, 0},	/* border */
@@ -17,16 +18,18 @@ std::vector<std::pair<int, int>> ITEM_COLORS = {
 };
 
 
-std::map<std::string, char> NAV_KEYS = {
-	{"up", 'k'},
-	{"down", 'j'},
-	{"left", 'h'},
-	{"right", 'l'},
-	{"toggle_hidden", 'H'},
-	{"open", 'o'},
-	{"quit", 'q'},
-	{"execute", '!'}
+std::map<char, std::pair<void(*)(void), arg>> NAV_KEYS = {
+	{'k', {&move, {.h = -1}}},
+	{'j', {&move, {.h =  1}}},
+	{'h', {&move, {.v = -1}}},
+	{'l', {&move, {.v =	1}}},
+	{'H', {&toggle_hidden, {}}},
+	{'o', {&open, {}}},
+	{'q', {&quit, {}}},
+	{'!', {&run_command, {}}}
 };
+
+std::string selection_shortcut = "<sel>";
 
 /* 
  * This are shortcuts, 
@@ -36,12 +39,12 @@ std::map<std::string, char> NAV_KEYS = {
  * A '\n' means it directly executes this command
  * if no '\n' is at the end its possible to edit the comand
  *
- * A '\?' means it replaces this sign with the current selection in the manager
+ * The selection_shortcut will be replaced with the current selection in the manager
  * */
 
 std::map<char, std::string> SHORT_CUTS = {
 	{'m', "mkdir "},
 	{'d', "rm "},
-	{' ', "less -N +k \?\n"}
+	{' ', "less -N +k " + selection_shortcut + "\n"}
 };
 
