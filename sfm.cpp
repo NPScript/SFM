@@ -26,6 +26,7 @@ class Sfm {
 		int selection;
 		bool show_hidden;
 		bool shell_command;
+		bool can_enter;
 	public:
 		Sfm();
 		~Sfm();
@@ -34,7 +35,6 @@ class Sfm {
 		void refresh_files();
 		void mainloop();
 		void insert_files(const int &, const std::string &);
-		std::string get_human_readable_size(const uintmax_t &);
 		void run_command(const std::string & = "");
 };
 
@@ -87,11 +87,9 @@ void Sfm::mainloop() {
 			this->current_path = this->current_path.parent_path();
 		} else if (ch == NAV_KEYS["right"]) {
 			std::string next_path = (this->current_path.string() == "/" ? "" : this->current_path.string()) + "/" + this->files[1][selection];
-			if (boost::filesystem::is_directory(next_path)) {
-				if (!boost::filesystem::is_empty(next_path)) {
-					this->current_path = next_path;
-					selection = 0;
-				}
+			if (this->can_enter) {
+				this->current_path = next_path;
+				selection = 0;
 			}
 		} else if (ch == NAV_KEYS["down"]) {
 			if (selection < files[1].size() - 1)
@@ -173,22 +171,32 @@ void Sfm::refresh_display() {
 	}
 
 	if (!boost::filesystem::is_directory(current_path.string() + "/" + files[1][selection])) {
-		wcolor_set(windows[2], 1, 0);
-		mvwhline(windows[2], files[2].size() + 1, 1, ACS_HLINE, screen_size[1] / 3 - 2);
-		wcolor_set(windows[2], 0, 0);
 
 		wclear(file_view);
 
-		mvwin(file_view, files[2].size() + 2, screen_size[1] / 3 * 2 + 1);
-		wresize(file_view, screen_size[0] - 3 - files[2].size(), screen_size[1] / 3 - 2);
+		mvwin(file_view, 1, screen_size[1] / 3 * 2 + 1);
+		wresize(file_view, screen_size[0] - 2, screen_size[1] / 3 - 2);
 
 		std::ifstream f(current_path.string() + "/" + files[1][selection]);
 		std::string line;
-		std::string view;
+		std::string view("");
 
-		for (int i = 0; i < 50 && getline(f, line); ++i) {
-			view += line + "\n";
+		if (f.bad()) {
+			wcolor_set(file_view, 1, 0);
+			view = "Bad File";
+		} else {
+			wcolor_set(file_view, 0, 0);
+			for (int i = 0; i < 50 && std::getline(f, line); ++i) {
+				view += line + "\n";
+			}
+
+			if (view.empty()) {
+				wcolor_set(file_view, 1, 0);
+				view = "Empty File";
+			}
 		}
+
+		f.close();
 
 		mvwprintw(file_view, 0, 0, view.c_str());
 
@@ -225,47 +233,18 @@ void Sfm::refresh_files() {
 	if (boost::filesystem::is_directory(active)) {
 		try {
 			insert_files(2, active.string());
+			this->can_enter = true;
 			if (this->files[2].empty()) {
 				this->files[2].push_back("empty");
+				this->can_enter = false;
 			}
 		} catch (boost::filesystem::filesystem_error & e) {
 			this->files[2].push_back(e.code().message());
+			this->can_enter = false;
 		}
 	} else {
-		this->files[2].push_back("Name:");
-		this->files[2].push_back(active.filename().string().substr(0, active.filename().string().find_first_of(".")));
-		this->files[2].push_back("");
-		this->files[2].push_back("Type:");
-		if (active.has_extension()) {
-			this->files[2].push_back(boost::algorithm::to_upper_copy(active.extension().string().substr(1, std::string::npos)));
-		} else {
-			this->files[2].push_back("Unknown");
-		}
-		this->files[2].push_back("");
-		this->files[2].push_back("Size:");
-		boost::uintmax_t size = boost::filesystem::file_size(active);
-		this->files[2].push_back(this->get_human_readable_size(size));
+		this->can_enter = false;
 	}
-}
-
-std::string Sfm::get_human_readable_size(const boost::uintmax_t & n) {
-	std::stringstream s;
-	char prefix[] = {'B', 'K', 'M', 'G', 'T'};
-
-	long int tmp = n;
-	unsigned short int i = 0;
-
-	while (tmp > 0) {tmp /= 1024; ++i;}
-
-	--i;
-	char p = prefix[i];
-	tmp = n;
-
-	for (;i > 1; --i) {tmp /= 1024;}
-
-	s << (i > 0 ? tmp / 102 / 10.0 : tmp) << p;
-
-	return s.str();
 }
 
 void Sfm::insert_files(const int & id, const std::string & path) {
