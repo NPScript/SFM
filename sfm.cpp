@@ -5,6 +5,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/type_traits/is_floating_point.hpp>
+#include <sys/wait.h>
 #include <curses.h>
 #include <iostream>
 #include <vector>
@@ -133,7 +134,23 @@ void open() {
 		current_path = next_path;
 		selection = 0;
 	} else {
-		system((std::string("xdg-open ") + next_path).c_str());
+		std::string prg = DEF_PROGS["fallback"];
+		std::string ext = boost::filesystem::path(next_path).extension().string();
+		
+		if (!DEF_PROGS[ext].empty()) {
+			prg = DEF_PROGS[ext];
+		}
+
+		pid_t stat = fork();
+		
+		if (stat == 0) {
+			system((prg + " \"" + next_path + "\"").c_str());
+			exit(0);
+		} else {
+			wait(&stat);
+			curs_set(0);
+			noecho();
+		}
 	}
 }
 

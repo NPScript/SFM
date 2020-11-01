@@ -48,3 +48,12 @@ std::map<char, std::string> SHORT_CUTS = {
 	{' ', "less -N +k " + selection_shortcut + "\n"}
 };
 
+std::map<std::string, std::string> DEF_PROGS = {
+	{".pdf", 		"zathura"},
+	{".png", 		"sxiv"},
+	{".jpg", 		"sxiv"},
+	{".jpeg", 	"sxiv"},
+	{".jpeg", 	"sxiv"},
+	{".mp4", 		"mpv"},
+	{"fallback", "vim"}
+};
