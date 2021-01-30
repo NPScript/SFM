@@ -6,8 +6,10 @@ all:
 clean:
 	rm sfm
 
-install:
+install: all
 	cp sfm /usr/local/bin/sfm
 
 uninstall:
 	rm /usr/local/bin/sfm
+
+.PHONY: all
