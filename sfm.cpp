@@ -22,11 +22,13 @@ void quit();
 void open();
 void toggle_hidden();
 void move();
-void refresh_display();
+void refresh_contents();
+void refresh_dimensions();
 void refresh_files();
 void mainloop();
 void insert_files(const int &, const std::string &);
 void run_command();
+void refresh_size();
 
 struct arg {
 	int v;
@@ -49,6 +51,11 @@ bool shell_command;
 bool can_enter;
 bool running;
 
+void refresh_size() {
+	getmaxyx(stdscr, screen_size[0], screen_size[1]);
+	--screen_size[0];
+}
+
 
 void start_session() {
 	current_path = boost::filesystem::current_path();
@@ -58,6 +65,9 @@ void start_session() {
 	running = true;
 
 	setlocale(LC_ALL, "");
+
+	refresh_files();
+
 	initscr();
 	start_color();
 	noecho();
@@ -67,8 +77,7 @@ void start_session() {
 		init_pair(i, ITEM_COLORS[i].first, ITEM_COLORS[i].second);
 	}
 
-	getmaxyx(stdscr, screen_size[0], screen_size[1]);
-	--screen_size[0];
+	refresh_size();
 
 	for (int i = 0; i < 3; ++i) {
 		windows[i] = newwin(screen_size[0], screen_size[1] / 3, 0, screen_size[1] / 3 * i);
@@ -77,8 +86,7 @@ void start_session() {
 	shell_panel = newwin(1, screen_size[1], screen_size[0], 0);
 	file_view = newwin(1, 1, 0, 0);
 
-	refresh_files();
-	refresh_display();
+	refresh_contents();
 }
 
 void end_session() {
@@ -161,7 +169,7 @@ void quit() {
 }
 
 void mainloop() {
-	char ch;
+	unsigned ch;
 
 	while (running) {
 		ch = getch();
@@ -170,25 +178,42 @@ void mainloop() {
 			cmd_arg.h = NAV_KEYS.find(ch)->second.second.h;
 			cmd_arg.v = NAV_KEYS.find(ch)->second.second.v;
 			(*NAV_KEYS.find(ch)->second.first)();
+			refresh_files();
+			refresh_contents();
 		} else if (SHORT_CUTS.find(ch) != SHORT_CUTS.end()) {
 			cmd_arg.cmd = SHORT_CUTS.find(ch)->second;
 			run_command();
+			refresh_files();
+			refresh_contents();
+		} else if (ch == KEY_RESIZE) {
+			refresh_dimensions();
+			refresh_contents();
 		}
-
-		refresh_files();
-		refresh_display();
 	}
 }
 
-void refresh_display() {
-	getmaxyx(stdscr, screen_size[0], screen_size[1]);
-	--screen_size[0];
-	clear();
-	refresh();
+void refresh_dimensions() {
+	refresh_size();
+	endwin();
+	initscr();
 
 	for (int i = 0; i < 3; ++i) {
 		wresize(windows[i], screen_size[0], screen_size[1] / 3);
 		mvwin(windows[i], 0, screen_size[1] / 3 * i);
+	}
+
+	mvwin(file_view, 1, screen_size[1] / 3 * 2 + 1);
+	wresize(file_view, screen_size[0] - 2, screen_size[1] / 3 - 2);
+
+	mvwin(shell_panel, screen_size[0], 0);
+	wresize(shell_panel, 1, screen_size[1]);
+}
+
+void refresh_contents() {
+	clear();
+	refresh();
+
+	for (int i = 0; i < 3; ++i) {
 
 		wclear(windows[i]);
 
@@ -230,8 +255,6 @@ void refresh_display() {
 
 		wclear(file_view);
 
-		mvwin(file_view, 1, screen_size[1] / 3 * 2 + 1);
-		wresize(file_view, screen_size[0] - 2, screen_size[1] / 3 - 2);
 
 		std::ifstream f(current_path.string() + "/" + files[1][selection]);
 		std::string line;
@@ -260,7 +283,6 @@ void refresh_display() {
 		wrefresh(windows[2]);
 	}
 
-	mvwin(shell_panel, screen_size[0], 0);
 	wclear(shell_panel);
 	if (current_path.string().size() < screen_size[1]) {
 		mvwprintw(shell_panel, 0, 0, current_path.c_str());
