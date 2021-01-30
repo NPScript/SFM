@@ -45,7 +45,8 @@ std::string selection_shortcut = "<sel>";
 std::map<char, std::string> SHORT_CUTS = {
 	{'m', "mkdir "},
 	{'d', "rm "},
-	{' ', "less -N +k " + selection_shortcut + "\n"}
+	{' ', "less -N +k " + selection_shortcut + "\n"},
+	{'s', getenv("SHELL") + std::string("\n")}
 };
 
 std::map<std::string, std::string> DEF_PROGS = {

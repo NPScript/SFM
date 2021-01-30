@@ -142,9 +142,9 @@ void open() {
 		}
 
 		pid_t stat = fork();
-		
+
 		if (stat == 0) {
-			system((prg + " \"" + next_path + "\"").c_str());
+			system(("setsid " + prg + " \"" + next_path + "\"").c_str());
 			exit(0);
 		} else {
 			wait(&stat);
@@ -348,10 +348,10 @@ void run_command() {
 		if (sel != std::string::npos) {
 			command.replace(sel, selection_shortcut.size(), files[1][selection]);
 		}
-
 		command = "(cd " + current_path.string() + " && " + command + ")";
+		endwin();
 		system(command.c_str());
-		
+		initscr();
 	}
 	curs_set(0);
 	cbreak();
