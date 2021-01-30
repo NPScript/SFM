@@ -214,15 +214,28 @@ void refresh_contents() {
 
 		wclear(windows[i]);
 
-		for (int j = 0; j < files[i].size(); ++j) {
-			bool is_active = files[1][selection] == files[i][j] && i == 1;
+		for (int j = 0; j < screen_size[0] - 2; ++j) {
+			unsigned scrl = 0;
+
+			if (selection > screen_size[0] - 3 && i == 1) {
+				scrl = selection - screen_size[0] + 3;
+			}
+
+			if (j - scrl < 0)
+				continue;
+
+			if (j + scrl == files[i].size())
+				break;
+
+			bool is_active = selection == j + scrl && i == 1;
 			
 			if (is_active) {
 				wcolor_set(windows[1], 2, 0);
 			}
 
-			if (files[i][j].size() > screen_size[1] / 3 - 2) {
-				std::string str = files[i][j];
+			std::string str = files[i][j + scrl];
+
+			if (str.size() > screen_size[1] / 3 - 2) {
 				
 				int dot_pos = str.find_last_of(".");
 
@@ -234,7 +247,7 @@ void refresh_contents() {
 
 				mvwprintw(windows[i], j + 1, 1, str.c_str());
 			} else {
-				mvwprintw(windows[i], j + 1, 1, (files[i][j] + std::string(screen_size[1] / 3 - 2 - files[i][j].size(), ' ')).c_str());
+				mvwprintw(windows[i], j + 1, 1, (str + std::string(screen_size[1] / 3 - 2 - str.size(), ' ')).c_str());
 			}
 
 			if (is_active) {
@@ -275,6 +288,13 @@ void refresh_contents() {
 		}
 
 		f.close();
+
+		for (int i = 0; i < view.size(); ++i) {
+			if (view[i] == '%') {
+				view.insert(i, "%");
+				++i;
+			}
+		}
 
 		mvwprintw(file_view, 0, 0, view.c_str());
 
