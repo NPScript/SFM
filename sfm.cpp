@@ -202,9 +202,6 @@ void refresh_dimensions() {
 		mvwin(windows[i], 0, screen_size[1] / 3 * i);
 	}
 
-	mvwin(file_view, 1, screen_size[1] / 3 * 2 + 1);
-	wresize(file_view, screen_size[0] - 2, screen_size[1] / 3 - 2);
-
 	mvwin(shell_panel, screen_size[0], 0);
 	wresize(shell_panel, 1, screen_size[1]);
 }
@@ -255,6 +252,8 @@ void refresh_contents() {
 
 		wclear(file_view);
 
+		mvwin(file_view, 1, screen_size[1] / 3 * 2 + 1);
+		wresize(file_view, screen_size[0] - 2, screen_size[1] / 3 - 2);
 
 		std::ifstream f(current_path.string() + "/" + files[1][selection]);
 		std::string line;
