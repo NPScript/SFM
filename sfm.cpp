@@ -141,6 +141,7 @@ void open() {
 			prg = DEF_PROGS[ext];
 		}
 
+		endwin();
 		pid_t stat = fork();
 
 		if (stat == 0) {
@@ -148,6 +149,7 @@ void open() {
 			exit(0);
 		} else {
 			wait(&stat);
+			initscr();
 			curs_set(0);
 			noecho();
 		}
