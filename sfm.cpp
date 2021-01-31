@@ -124,7 +124,13 @@ void move() {
 			}
 		}
 
-		selection += cmd_arg.h;
+		if (cmd_arg.cmd == "top") {
+			selection = 0;
+		} else if (cmd_arg.cmd == "bottom") {
+			selection = files[1].size() - 1;
+		} else {
+			selection += cmd_arg.h;
+		}
 
 		if (selection < 0)
 			selection = 0;

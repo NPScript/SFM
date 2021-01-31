@@ -23,6 +23,8 @@ std::map<char, std::pair<void(*)(void), arg>> NAV_KEYS = {
 	{'j', {&move, {.h =  1}}},
 	{'h', {&move, {.v = -1}}},
 	{'l', {&move, {.v =	1}}},
+	{'g', {&move, {.cmd =	"top"}}},
+	{'G', {&move, {.cmd =	"bottom"}}},
 	{'H', {&toggle_hidden, {}}},
 	{'o', {&open, {}}},
 	{'q', {&quit, {}}},
