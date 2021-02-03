@@ -241,9 +241,6 @@ void refresh_contents() {
 			std::string str = files[i][j + scrl];
 
 			try {
-				if (!ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()].empty())
-					str = " " + ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()] + "  " + str;
-
 				std::string dir = (i == 0 ? current_path.parent_path().string() : "");
 				dir += (i == 1 ? current_path.string() : "");
 				dir += (i == 2 ? current_path.string() + "/" + files[1][selection] : "");
@@ -251,7 +248,12 @@ void refresh_contents() {
 
 				if (boost::filesystem::is_directory(dir + files[i][j + scrl])) {
 					str = " " + DIRECTORY_ICON + "  " + str;
+				} else if (!ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()].empty()) {
+					str = " " + ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()] + "  " + str;
+				} else {
+					str = " " + ICONS_SUFFIX[""] + "  " + str;
 				}
+
 			} catch (boost::filesystem::filesystem_error & e) {
 				str = " ⚠  " + str;
 			}
