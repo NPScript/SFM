@@ -240,16 +240,20 @@ void refresh_contents() {
 
 			std::string str = files[i][j + scrl];
 
-			if (!ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()].empty())
-				str = " " + ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()] + "  " + str;
+			try {
+				if (!ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()].empty())
+					str = " " + ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()] + "  " + str;
 
-			std::string dir = (i == 0 ? current_path.parent_path().string() : "");
-			dir += (i == 1 ? current_path.string() : "");
-			dir += (i == 2 ? current_path.string() + "/" + files[1][selection] : "");
-			dir += "/";
+				std::string dir = (i == 0 ? current_path.parent_path().string() : "");
+				dir += (i == 1 ? current_path.string() : "");
+				dir += (i == 2 ? current_path.string() + "/" + files[1][selection] : "");
+				dir += "/";
 
-			if (boost::filesystem::is_directory(dir + files[i][j + scrl])) {
-				str = " " + DIRECTORY_ICON + "  " + str;
+				if (boost::filesystem::is_directory(dir + files[i][j + scrl])) {
+					str = " " + DIRECTORY_ICON + "  " + str;
+				}
+			} catch (boost::filesystem::filesystem_error & e) {
+				str = " ⚠  " + str;
 			}
 
 			if (str.size() > screen_size[1] / 3 - 2) {
@@ -342,21 +346,21 @@ void refresh_files() {
 
 	insert_files(1, current_path.string());
 
-	boost::filesystem::path active(current_path.string() + "/" + files[1][selection]);
-	
-	if (boost::filesystem::is_directory(active)) {
-		try {
+	try {
+		boost::filesystem::path active(current_path.string() + "/" + files[1][selection]);
+
+		if (boost::filesystem::is_directory(active)) {
 			insert_files(2, active.string());
 			can_enter = true;
 			if (files[2].empty()) {
 				files[2].push_back("empty");
 				can_enter = false;
 			}
-		} catch (boost::filesystem::filesystem_error & e) {
-			files[2].push_back(e.code().message());
+		} else {
 			can_enter = false;
 		}
-	} else {
+	} catch (boost::filesystem::filesystem_error & e) {
+		files[2].push_back(e.code().message());
 		can_enter = false;
 	}
 }
