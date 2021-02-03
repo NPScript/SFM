@@ -38,7 +38,6 @@ struct arg {
 
 #include "config.hpp"
 
-
 WINDOW * windows[3];
 WINDOW * shell_panel;
 WINDOW * file_view;
@@ -240,6 +239,18 @@ void refresh_contents() {
 			}
 
 			std::string str = files[i][j + scrl];
+
+			if (!ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()].empty())
+				str = " " + ICONS_SUFFIX[boost::filesystem::path(current_path.string() + "/" + files[i][j + scrl]).extension().string()] + "  " + str;
+
+			std::string dir = (i == 0 ? current_path.parent_path().string() : "");
+			dir += (i == 1 ? current_path.string() : "");
+			dir += (i == 2 ? current_path.string() + "/" + files[1][selection] : "");
+			dir += "/";
+
+			if (boost::filesystem::is_directory(dir + files[i][j + scrl])) {
+				str = " " + DIRECTORY_ICON + "  " + str;
+			}
 
 			if (str.size() > screen_size[1] / 3 - 2) {
 				
