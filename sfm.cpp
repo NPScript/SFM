@@ -239,6 +239,7 @@ void refresh_contents() {
 			}
 
 			std::string str = files[i][j + scrl];
+			size_t extra = str.size();
 
 			try {
 				std::string dir = (i == 0 ? current_path.parent_path().string() : "");
@@ -258,7 +259,9 @@ void refresh_contents() {
 				str = " ⚠  " + str;
 			}
 
-			if (str.size() > screen_size[1] / 3 - 2) {
+			extra = str.size() - extra - 3;
+
+			if (str.size() - extra + 2 > screen_size[1] / 3 - 2) {
 				
 				int dot_pos = str.find_last_of(".");
 
@@ -266,11 +269,11 @@ void refresh_contents() {
 					dot_pos = str.size();
 				}
 				
-				str = str.substr(0, screen_size[1] / 3 - 3 - str.size() + dot_pos) + "…" + str.substr(dot_pos, std::string::npos);
+				str = str.substr(0, screen_size[1] / 3 - 5 - str.size() + extra + dot_pos) + "…" + str.substr(dot_pos, std::string::npos) + " ";
 
 				mvwprintw(windows[i], j + 1, 1, str.c_str());
 			} else {
-				mvwprintw(windows[i], j + 1, 1, (str + std::string(screen_size[1] / 3 - 2 - str.size(), ' ')).c_str());
+				mvwprintw(windows[i], j + 1, 1, (str + std::string(screen_size[1] / 3 - 3 - str.size() + extra, ' ') + " ").c_str());
 			}
 
 			if (is_active) {

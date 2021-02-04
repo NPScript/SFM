@@ -58,7 +58,7 @@ std::map<std::string, std::string> DEF_PROGS = {
 	{".jpeg", 	"sxiv"},
 	{".jpeg", 	"sxiv"},
 	{".mp4", 		"mpv"},
-	{"fallback", "vim"}
+	{"fallback", "nvim"}
 };
 
 std::string DIRECTORY_ICON = "";
@@ -66,6 +66,7 @@ std::string DIRECTORY_ICON = "";
 std::map<std::string, std::string> ICONS_SUFFIX = {
 	{"", "?"},
 	{".7z", ""},
+	{".txt", "🖹"},
 	{".a", ""},
 	{".ai", ""},
 	{".apk", ""},
@@ -77,6 +78,7 @@ std::map<std::string, std::string> ICONS_SUFFIX = {
 	{".bash", ""},
 	{".bat", ""},
 	{".bmp", ""},
+	{".svg", ""},
 	{".bz2", ""},
 	{".c", ""},
 	{".c++", ""},
