@@ -51,14 +51,14 @@ std::map<char, std::string> SHORT_CUTS = {
 	{'s', getenv("SHELL") + std::string("\n")}
 };
 
-std::map<std::string, std::string> DEF_PROGS = {
-	{".pdf", 		"zathura"},
-	{".png", 		"sxiv"},
-	{".jpg", 		"sxiv"},
-	{".jpeg", 	"sxiv"},
-	{".jpeg", 	"sxiv"},
-	{".mp4", 		"mpv"},
-	{"fallback", "nvim"}
+std::map<std::string, std::pair<std::string, int>> DEF_PROGS = {
+	{".pdf", 		{"zathura", 1}},
+	{".png", 		{"sxiv", 1}},
+	{".jpg", 		{"sxiv", 1}},
+	{".jpeg", 	{"sxiv", 1}},
+	{".jpeg", 	{"sxiv", 1}},
+	{".mp4", 		{"mpv", 1}},
+	{"fallback", {"nvim", 0}}
 };
 
 std::string DIRECTORY_ICON = "";

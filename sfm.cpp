@@ -147,21 +147,31 @@ void open() {
 		current_path = next_path;
 		selection = 0;
 	} else {
-		std::string prg = DEF_PROGS["fallback"];
+		std::string prg = DEF_PROGS["fallback"].first;
 		std::string ext = boost::filesystem::path(next_path).extension().string();
+		int parallelize = DEF_PROGS["fallback"].second;
 		
-		if (!DEF_PROGS[ext].empty()) {
-			prg = DEF_PROGS[ext];
+		if (DEF_PROGS.find(ext) != DEF_PROGS.end()) {
+			prg = DEF_PROGS[ext].first;
+			parallelize = DEF_PROGS[ext].second;
 		}
 
 		endwin();
-		pid_t stat = fork();
 
-		if (stat == 0) {
-			system(("setsid " + prg + " \"" + next_path + "\"").c_str());
-			exit(0);
+		if (parallelize) {
+			pid_t stat = fork();
+
+			if (stat == 0) {
+				system(("setsid " + prg + " \"" + next_path + "\"").c_str());
+				exit(0);
+			} else {
+				wait(&stat);
+				initscr();
+				curs_set(0);
+				noecho();
+			}
 		} else {
-			wait(&stat);
+			system((prg + " \"" + next_path + "\"").c_str());
 			initscr();
 			curs_set(0);
 			noecho();
