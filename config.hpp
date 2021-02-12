@@ -58,6 +58,7 @@ std::map<std::string, std::pair<std::string, int>> DEF_PROGS = {
 	{".jpeg", 	{"sxiv", 1}},
 	{".jpeg", 	{"sxiv", 1}},
 	{".mp4", 		{"mpv", 1}},
+	{".mp3", 		{"mpv", 0}},
 	{"fallback", {"nvim", 0}}
 };
 

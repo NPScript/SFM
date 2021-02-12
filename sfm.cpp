@@ -71,6 +71,10 @@ void start_session() {
 	start_color();
 	noecho();
 	curs_set(0);
+	keypad(stdscr, TRUE);
+
+	mousemask(BUTTON1_PRESSED | BUTTON1_RELEASED, NULL);
+	mouseinterval(0);
 
 	for (int i = 0; i < ITEM_COLORS.size(); ++i) {
 		init_pair(i, ITEM_COLORS[i].first, ITEM_COLORS[i].second);
@@ -185,6 +189,8 @@ void quit() {
 
 void mainloop() {
 	unsigned ch;
+	bool selected = false;
+	MEVENT event;
 
 	while (running) {
 		ch = getch();
@@ -203,6 +209,30 @@ void mainloop() {
 		} else if (ch == KEY_RESIZE) {
 			refresh_dimensions();
 			refresh_contents();
+		} else if (getmouse(&event) == OK) {
+			if (event.bstate & BUTTON1_PRESSED) {
+				if (event.x < screen_size[1] / 3) {
+					cmd_arg = {.v = -1};
+					move();
+				} else if (event.x < screen_size[1] * 2 / 3 && files[1].size() + 1 > event.y) {
+					selection = event.y - 1;
+					selected = true;
+				} else if (event.x > screen_size[1] * 2 / 3 && event.x < screen_size[1]) {
+					cmd_arg = {.v = 1};
+					move();
+				}
+				
+				refresh_files();
+				refresh_contents();
+
+			} else if (event.bstate & BUTTON1_RELEASED && selected) {
+				selected = false;
+				cmd_arg = {.v = 1};
+				move();
+
+				refresh_files();
+				refresh_contents();
+			}
 		}
 	}
 }
