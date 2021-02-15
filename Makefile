@@ -1,7 +1,7 @@
 default_target: all
 
 all:
-	g++ sfm.cpp -lncurses -lboost_filesystem -o sfm
+	g++ sfm.cpp -lncurses -lboost_filesystem -lmagic -o sfm
 
 clean:
 	rm sfm

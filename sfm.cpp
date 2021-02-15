@@ -14,6 +14,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <magic.h>
 
 void start_session();
 void end_session();
@@ -29,6 +30,10 @@ void mainloop();
 void insert_files(const int &, const std::string &);
 void run_command();
 void refresh_size();
+std::string text_preview();
+std::string img_preview(const std::string &);
+std::string preview_file();
+std::string preview_pdf();
 
 struct arg {
 	int v;
@@ -199,6 +204,8 @@ void mainloop() {
 			cmd_arg.h = NAV_KEYS.find(ch)->second.second.h;
 			cmd_arg.v = NAV_KEYS.find(ch)->second.second.v;
 			(*NAV_KEYS.find(ch)->second.first)();
+			if (!running)
+				break;
 			refresh_files();
 			refresh_contents();
 		} else if (SHORT_CUTS.find(ch) != SHORT_CUTS.end()) {
@@ -235,6 +242,112 @@ void mainloop() {
 			}
 		}
 	}
+}
+
+std::string preview_file() {
+	std::string view;
+	magic_t handle = magic_open(MAGIC_NONE|MAGIC_COMPRESS);
+	magic_load(handle, NULL);
+	std::string type = magic_file(handle, (current_path.string() + "/" + files[1][selection]).c_str());
+
+	if (type.find("text") != std::string::npos) {
+		view = text_preview();
+	} else if (type.find("image data") != std::string::npos) {
+		view = img_preview(type);
+	} else if (type.find("PDF") != std::string::npos) {
+		view = preview_pdf();
+		if (view.empty())
+			return type + "\n\n Install poppler to prewview PDF";
+	} else {
+		return type;
+	}
+
+	return view;
+}
+
+std::string text_preview() {
+	std::ifstream f(current_path.string() + "/" + files[1][selection]);
+		std::string line;
+		std::string view("");
+
+		if (f.bad()) {
+			wcolor_set(file_view, 1, 0);
+			view = "Bad File";
+		} else {
+			wcolor_set(file_view, 0, 0);
+			for (int i = 0; i < 50 && std::getline(f, line); ++i) {
+				view += line + "\n";
+			}
+
+			if (view.empty()) {
+				wcolor_set(file_view, 1, 0);
+				view = "Empty File";
+			}
+		}
+
+		f.close();
+
+		return view;
+}
+
+std::string img_preview(const std::string & type) {
+	if (!boost::filesystem::exists("/usr/lib/w3m/w3mimgdisplay"))
+		return type + "\n\nInstall w3m to display images";
+
+	std::string image = current_path.string() + "/" + files[1][selection];
+
+	size_t width;
+	size_t height;
+	size_t x;
+
+	if (type.find("PNG image data") != std::string::npos) {
+		size_t size_inf_begin = type.find_first_of(",");
+		std::string size_str = type.substr(size_inf_begin + 2, type.substr(size_inf_begin + 2).find_first_of(","));
+		width = std::stoi(size_str.substr(0, size_str.find_first_of(" ")));
+		height = std::stoi(size_str.substr(size_str.find_last_of(" ")));
+	} else if (type.find("JPEG image data") != std::string::npos) {
+		size_t size_inf_end = type.find_last_of(",");
+		size_t size_inf_begin = type.substr(0, size_inf_end).find_last_of(",") + 2;
+		std::string size_str = type.substr(size_inf_begin, size_inf_end - size_inf_begin);
+
+		width = std::stoi(size_str.substr(0, size_str.find("x")));
+		height = std::stoi(size_str.substr(size_str.find("x") + 1));
+
+	} else {
+		return type;
+	}
+
+	height = height * ((screen_size[1] - 2) / 3.0f * 8 / (width - 10));
+	width = (screen_size[1] - 2) / 3 * 8 - 10;
+	x = screen_size[1] / 3.0f * 16 + 12;
+
+	std::string cmd = "$(sleep 0.1 && printf '0;1;" + std::to_string(x) + ";18;" + std::to_string(width) + ";" + std::to_string(height) + ";";
+	cmd += ";;;;";
+	cmd += image;
+	cmd += "\n4;\n3;\n'";
+	cmd += " | /usr/lib/w3m/w3mimgdisplay) &";
+
+	system(cmd.c_str());
+
+	return "";
+}
+
+std::string preview_pdf() {
+	std::string cmd = "pdftotext -f 1 '" + current_path.string() + "/" + files[1][selection] + "' -";
+	FILE * ptt = popen(cmd.c_str(), "r");
+
+	if (ptt == nullptr)
+		return "";
+
+	std::string text;
+	char line[1024];
+
+	while (fgets(line, 1024, ptt) != NULL)
+		text += line;
+
+	fclose(ptt);
+
+	return text;
 }
 
 void refresh_dimensions() {
@@ -334,38 +447,14 @@ void refresh_contents() {
 		mvwin(file_view, 1, screen_size[1] / 3 * 2 + 1);
 		wresize(file_view, screen_size[0] - 2, screen_size[1] / 3 - 2);
 
-		std::ifstream f(current_path.string() + "/" + files[1][selection]);
-		std::string line;
-		std::string view("");
+		std::string view = preview_file();
 
-		if (f.bad()) {
-			wcolor_set(file_view, 1, 0);
-			view = "Bad File";
-		} else {
-			wcolor_set(file_view, 0, 0);
-			for (int i = 0; i < 50 && std::getline(f, line); ++i) {
-				view += line + "\n";
-			}
+		if (view.size()) {
+			mvwprintw(file_view, 0, 0, view.c_str());
 
-			if (view.empty()) {
-				wcolor_set(file_view, 1, 0);
-				view = "Empty File";
-			}
+			wrefresh(file_view);
+			wrefresh(windows[2]);
 		}
-
-		f.close();
-
-		for (int i = 0; i < view.size(); ++i) {
-			if (view[i] == '%') {
-				view.insert(i, "%");
-				++i;
-			}
-		}
-
-		mvwprintw(file_view, 0, 0, view.c_str());
-
-		wrefresh(file_view);
-		wrefresh(windows[2]);
 	}
 
 	wclear(shell_panel);
