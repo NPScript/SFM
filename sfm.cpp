@@ -519,25 +519,35 @@ void run_command() {
 	wrefresh(shell_panel);
 	wmove(shell_panel, 0, command.size() + 1);
 
-	char ch;
+	int ch;
 	if (command.back() == '\n') {
 		command.pop_back();
 		ch = '\n';
 	} else {
+		int ins_pos = command.size();
 		while ((ch = getch()) != 27) {
 			if (ch == '\n') {
 				break;
-			} else if (ch == 127) {
-				if (!command.empty())
-					command.pop_back();
+			} else if (ch == KEY_LEFT) {
+				if (ins_pos)
+					--ins_pos;
+			} else if (ch == KEY_RIGHT) {
+				if (ins_pos < command.size())
+					++ins_pos;
+			} else if (ch == KEY_BACKSPACE) {
+				if (!command.empty()) {
+					command.erase(ins_pos - 1);
+					--ins_pos;
+				}
 			} else {
-				command += ch;
+				command.insert(ins_pos, 1, ch);
+				++ins_pos;
 			}
 
 			wclear(shell_panel);
 			wprintw(shell_panel, (":" + command).c_str());
+			wmove(shell_panel, 0, ins_pos + 1);
 			wrefresh(shell_panel);
-			wmove(shell_panel, 0, command.size() + 1);
 		}
 	}
 
