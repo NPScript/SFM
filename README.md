@@ -1,4 +1,4 @@
-# SFM - Suckless File Manager
+# SFM - Simple File Manager
 
 A little file manager I made.
 
