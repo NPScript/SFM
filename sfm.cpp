@@ -556,7 +556,7 @@ void run_command() {
 		if (sel != std::string::npos) {
 			command.replace(sel, selection_shortcut.size(), files[1][selection]);
 		}
-		command = "(cd " + current_path.string() + " && " + command + ")";
+		command = "(cd \"" + current_path.string() + "\" && " + command + ")";
 		endwin();
 		system(command.c_str());
 		initscr();
