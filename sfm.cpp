@@ -113,9 +113,13 @@ void end_session() {
 
 void move() {
 		if (cmd_arg.v < 0) {
+			std::string sel;
 			for (; cmd_arg.v < 0 && current_path != boost::filesystem::path("/"); ++cmd_arg.v) {
-				selection = std::distance(files[0].begin(), std::find(files[0].begin(), files[0].end(), current_path.filename().string()));
+				sel = current_path.filename().string();
 				current_path = current_path.parent_path();
+
+				selection = std::distance(files[0].begin(), std::find(files[0].begin(), files[0].end(), sel));
+				refresh_files();
 			}
 
 		} else if (cmd_arg.v > 0) {
@@ -277,6 +281,16 @@ std::string text_preview() {
 			for (int i = 0; i < 50 && std::getline(f, line); ++i) {
 				view += line + "\n";
 			}
+
+			std::string tmp;
+			for (const char & c : view) {
+				if (c == '%')
+					tmp += "%%";
+				else 
+					tmp += c;
+			}
+
+			view = tmp;
 
 			if (view.empty()) {
 				wcolor_set(file_view, 1, 0);
