@@ -62,7 +62,6 @@ void refresh_size() {
 
 
 void start_session() {
-	current_path = boost::filesystem::current_path();
 	show_hidden = false;
 	shell_command = false;
 	selection = 0;
@@ -567,6 +566,23 @@ void run_command() {
 }
 
 int main(int argc, char ** argv) {
+	if (argc > 2) {
+		std::cerr << "sfm [path]\n";
+		return -1;
+	} else if (argc == 2) {
+		current_path = argv[1] + (std::string(argv[1]).back() == '/' ? std::string() : std::string("/"));
+		if (!boost::filesystem::exists(current_path)) {
+			std::cerr << "Directory " << current_path.string() << " does not exist\n";
+			return -1;
+		}
+
+		if (!boost::filesystem::is_directory(current_path)) {
+			std::cerr << "\"" << current_path.string() << "\" is not a directory\n";
+		}
+	} else {
+		current_path = boost::filesystem::current_path();
+	}
+
 	start_session();
 	mainloop();
 	end_session();
