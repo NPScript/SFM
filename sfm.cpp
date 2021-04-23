@@ -592,12 +592,26 @@ int main(int argc, char ** argv) {
 
 		if (!boost::filesystem::is_directory(current_path)) {
 			std::cerr << "\"" << current_path.string() << "\" is not a directory\n";
+			return -1;
 		}
+
+		current_path = boost::filesystem::canonical(current_path);
 	} else {
 		current_path = boost::filesystem::current_path();
 	}
 
+	boost::filesystem::path old = current_path;
+	bool is_empty_dir = is_empty(current_path);
+	if (is_empty_dir)
+		current_path = current_path.parent_path();
+
 	start_session();
+
+	if (is_empty_dir) {
+		selection = std::distance(files[1].begin(), std::find(files[1].begin(), files[1].end(), old.filename()));
+		refresh_contents();
+	}
+
 	mainloop();
 	end_session();
 	return 0;
